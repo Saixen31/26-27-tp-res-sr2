@@ -41,3 +41,4 @@ uint8_t generer_controle(paquet_t* paquet){
 uint8_t verifier_controle(paquet_t* paquet){
     return generer_controle(paquet) == paquet->somme_ctrl;
 }
+
