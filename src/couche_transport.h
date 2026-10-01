@@ -38,6 +38,8 @@ typedef struct paquet_s {
 /* Fonctions utilitaires couche transport */
 /* ************************************** */
 
+int inc(int num, int mod);
+
 uint8_t generer_controle(paquet_t* paquet);
 
 uint8_t verifier_controle(paquet_t* paquet);

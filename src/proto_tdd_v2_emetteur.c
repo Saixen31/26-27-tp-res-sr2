@@ -4,56 +4,66 @@
 #include "services_reseau.h"
 
 
+
 /* =============================== */
 /* Programme principal - émetteur  */
 /* =============================== */
-int main(int argc, char* argv[])
-{
-    unsigned char message[MAX_INFO]; /* message de l'application */
-    int taille_msg;                  /* taille du message */
-    paquet_t pdata;                  /* paquet utilisé par le protocole */
-    paquet_t pack;
-    int prochain_paquet;
-    int evt;
 
+int main(int argc, char* argv[]) {
+    unsigned char message[MAX_INFO];
+    int taille_msg;
+    paquet_t paquet;
+    paquet_t ack;
+    
+    uint8_t seq_a_emettre = 0; 
+    int evenement;
     init_reseau(EMISSION);
-
     printf("[TRP] Initialisation reseau : OK.\n");
-    printf("[TRP] Debut execution protocole transport.\n");
+    printf("[TRP] Debut execution protocole transport v2.\n");
 
-    /* lecture de donnees provenant de la couche application */
     de_application(message, &taille_msg);
-    prochain_paquet = 0;
 
-    /* tant que l'émetteur a des données à envoyer */
-    while ( taille_msg != 0 ) {
-
-        /* construction paquet */
+    while (taille_msg != 0) {
+        
+        // 1. Préparation du paquet
         for (int i=0; i<taille_msg; i++) {
-            pdata.info[i] = message[i];
+            paquet.info[i] = message[i];
         }
-        pdata.lg_info = taille_msg;
-        pdata.type = DATA;
-        pdata.numseq = prochain paquet;
-        pdata.somme_ctrl = generer_controle(&pdata);
-        /* remise à la couche reseau */
-        vers_reseau(&pdata);
-        depart_temporisateur();
-        evt = attendre();
-        de_reseau(&pack);
-        while(evt ==  ){
-            vers_reseau(&pdata);
-            depart_temporisateur();
-            evt = attendre();
+        paquet.lg_info = taille_msg;
+        paquet.type = DATA;
+        paquet.num_seq = seq_a_emettre; 
+        paquet.somme_ctrl = generer_controle(&paquet);
+
+        int ack_recu = 0;
+        
+        // 2. Boucle de retransmission avec gestion du timeout
+        while (!ack_recu) {
+            vers_reseau(&paquet);
+            depart_temporisateur(100); // 100 ms selon les conseils du header
+            
+            evenement = attendre(); 
+            
+            // Si la fonction attendre() renvoie -1, c'est l'événement PAQUET_RECU
+            if (evenement == PAQUET_RECU) {
+                de_reseau(&ack);
+                
+                // On valide que c'est un ACK et qu'il porte le bon numéro
+                if (ack.type == ACK && ack.num_seq == seq_a_emettre) {
+                    arret_temporisateur(); // Arrêt explicite du chrono
+                    ack_recu = 1;
+                    printf("[TRP] Paquet %d acquitte.\n", seq_a_emettre);
+                }
+            } else {
+                // Si l'événement est différent de PAQUET_RECU (>= 0), c'est une expiration
+                printf("[TRP] Timeout ! Retransmission du paquet %d.\n", seq_a_emettre);
+            }
         }
-        de_reseau(&pack);
-        arreter_temporisateur();
-        prochain_paquet = inc() 
-        blabla
-        /* lecture des donnees suivantes de la couche application */
+        
+        // 3. Basculement de la séquence via votre fonction inc()
+        seq_a_emettre = inc(seq_a_emettre, 2);
         de_application(message, &taille_msg);
     }
-
-    printf("[TR] Fin execution protocole transfert de donnees (TDD).\n");
+    
+    printf("[TRP] Fin execution protocole transfert de donnees (TDD).\n");
     return 0;
 }
