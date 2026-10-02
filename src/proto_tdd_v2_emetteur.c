@@ -25,7 +25,6 @@ int main(int argc, char* argv[]) {
 
     while (taille_msg != 0) {
         
-        // 1. Préparation du paquet
         for (int i=0; i<taille_msg; i++) {
             paquet.info[i] = message[i];
         }
@@ -36,10 +35,9 @@ int main(int argc, char* argv[]) {
 
         int ack_recu = 0;
         
-        // 2. Boucle de retransmission avec gestion du timeout
         while (!ack_recu) {
             vers_reseau(&paquet);
-            depart_temporisateur(100); // 100 ms selon les conseils du header
+            depart_temporisateur(100); 
             
             evenement = attendre(); 
             
@@ -49,17 +47,16 @@ int main(int argc, char* argv[]) {
                 
                 // On valide que c'est un ACK et qu'il porte le bon numéro
                 if (ack.type == ACK && ack.num_seq == seq_a_emettre) {
-                    arret_temporisateur(); // Arrêt explicite du chrono
+                    arret_temporisateur(); 
                     ack_recu = 1;
                     printf("[TRP] Paquet %d acquitte.\n", seq_a_emettre);
                 }
             } else {
-                // Si l'événement est différent de PAQUET_RECU (>= 0), c'est une expiration
+                
                 printf("[TRP] Timeout ! Retransmission du paquet %d.\n", seq_a_emettre);
             }
         }
         
-        // 3. Basculement de la séquence via votre fonction inc()
         seq_a_emettre = inc(seq_a_emettre, 2);
         de_application(message, &taille_msg);
     }
